@@ -3,7 +3,6 @@
 # <xbar.version>v2.0</xbar.version>
 # <xbar.author>xshoji</xbar.author>
 # <xbar.desc>Display Amp Free credit remaining in the menu bar</xbar.desc>
-# <xbar.dependencies>jq</xbar.dependencies>
 #
 # SwiftBar plugin: Always display Amp Free credit remaining in the menu bar.
 #
@@ -33,10 +32,6 @@ limit="0"
 rate="0"
 show_limit="false"
 amp_running="false"
-
-has_jq() {
-  command -v jq >/dev/null 2>&1
-}
 
 current_utc_timestamp() {
   date -u +%Y-%m-%dT%H:%M:%SZ
@@ -68,14 +63,8 @@ write_cache_file() {
   local cache_limit="${2:-0}"
   local cache_rate="${3:-0}"
 
-  if has_jq; then
-    jq -n --arg r "$cache_remaining" --arg l "$cache_limit" --arg replenish_rate "$cache_rate" \
-      '{remaining:($r|tonumber),limit:($l|tonumber),replenishRate:($replenish_rate|tonumber),showLimit:false,updatedAt:(now|todate)}' \
-      > "$MENUBAR_FILE" 2>/dev/null || return 1
-  else
-    printf '{"remaining":%s,"limit":%s,"replenishRate":%s,"showLimit":false,"updatedAt":"%s"}\n' \
-      "$cache_remaining" "$cache_limit" "$cache_rate" "$(current_utc_timestamp)" > "$MENUBAR_FILE" || return 1
-  fi
+  printf '{"remaining":%s,"limit":%s,"replenishRate":%s,"showLimit":false,"updatedAt":"%s"}\n' \
+    "$cache_remaining" "$cache_limit" "$cache_rate" "$(current_utc_timestamp)" > "$MENUBAR_FILE" || return 1
 
   return 0
 }
@@ -87,11 +76,7 @@ read_cache_updated_at() {
     return 1
   fi
 
-  if has_jq; then
-    updated_at=$(jq -r '.updatedAt // empty' "$MENUBAR_FILE" 2>/dev/null)
-  else
-    updated_at=$(grep -o '"updatedAt":"[^"]*' "$MENUBAR_FILE" | cut -d'"' -f4)
-  fi
+  updated_at=$(grep -o '"updatedAt":"[^"]*' "$MENUBAR_FILE" | cut -d'"' -f4)
 
   [[ -n "$updated_at" ]] || return 1
   printf '%s\n' "$updated_at"
@@ -186,24 +171,17 @@ refresh_cached_data_if_needed() {
 
 # --- Read from cache file ---
 read_cache_file() {
-  local cache_line
-
   if [[ ! -f "$MENUBAR_FILE" ]]; then
     return 1
   fi
 
-  if has_jq; then
-    cache_line=$(jq -r '[.remaining, (.limit // 0), (.replenishRate // 0), (.showLimit // false)] | @tsv' "$MENUBAR_FILE" 2>/dev/null) || return 1
-    IFS=$'\t' read -r remaining limit rate show_limit <<< "$cache_line"
+  remaining=$(grep -o '"remaining":[0-9.]*' "$MENUBAR_FILE" | cut -d: -f2)
+  limit=$(grep -o '"limit":[0-9.]*' "$MENUBAR_FILE" | cut -d: -f2)
+  rate=$(grep -o '"replenishRate":[0-9.]*' "$MENUBAR_FILE" | cut -d: -f2)
+  if grep -q '"showLimit":true' "$MENUBAR_FILE"; then
+    show_limit="1"
   else
-    remaining=$(grep -o '"remaining":[0-9.]*' "$MENUBAR_FILE" | cut -d: -f2)
-    limit=$(grep -o '"limit":[0-9.]*' "$MENUBAR_FILE" | cut -d: -f2)
-    rate=$(grep -o '"replenishRate":[0-9.]*' "$MENUBAR_FILE" | cut -d: -f2)
-    if grep -q '"showLimit":true' "$MENUBAR_FILE"; then
-      show_limit="1"
-    else
-      show_limit="0"
-    fi
+    show_limit="0"
   fi
 
   [[ -n "$limit" && "$limit" != "null" ]] || limit="0"

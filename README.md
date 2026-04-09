@@ -10,6 +10,7 @@ A [SwiftBar](https://github.com/swiftbar/SwiftBar) plugin that displays your [Am
 ## Overview
 
 This is a standalone SwiftBar plugin — no additional Amp plugins required.
+It only depends on macOS, SwiftBar, and the Amp CLI binary installation.
 
 ```
 ┌─────────────────────────────────────────┐
