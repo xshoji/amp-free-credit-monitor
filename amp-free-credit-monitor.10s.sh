@@ -249,7 +249,7 @@ print_menu() {
 
   echo "$status_text"
   echo "Refresh | refresh=true"
-  echo "Open Amp Dashboard | href=https://ampcode.com/dashboard"
+  echo "Open Amp Dashboard | href=https://ampcode.com/settings"
 }
 
 load_credit_data() {
