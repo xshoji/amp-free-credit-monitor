@@ -4,7 +4,7 @@
 
 A [SwiftBar](https://github.com/swiftbar/SwiftBar) plugin that displays your [Amp](https://ampcode.com/) Free credit balance in the macOS menu bar.
 
-<img width="686" height="403" alt="xshoji_amp-free-credit-monitor_ss" src="https://github.com/user-attachments/assets/abdda213-d05e-4ac9-9e49-a7421b2f3543" />
+<img width="647" height="379" alt="xshoji_amp-free-credit-monitor_ss" src="https://github.com/user-attachments/assets/7c97fbee-6528-4440-8051-2c397899cba2" />
 
 
 ## Overview
