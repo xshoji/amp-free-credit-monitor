@@ -24,8 +24,8 @@ fi
 
 AMP_LOOKUP_PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.local/bin:$PATH"
 MENUBAR_FILE="${AMP_CREDIT_FILE:-/tmp/amp-credit-menubar.txt}"
-CRITICAL_BALANCE_THRESHOLD="5"
-LOW_BALANCE_THRESHOLD="15"
+CRITICAL_BALANCE_THRESHOLD="10"
+LOW_BALANCE_THRESHOLD="30"
 
 remaining=""
 limit="0"
@@ -226,7 +226,10 @@ print_menu() {
   remaining_fmt="$remaining"
   color=$(color_for_remaining "$remaining")
 
-  display_text="Free ${remaining_fmt}%"
+  # 100% = $5 換算で残量をドル表示
+  local dollar_value
+  dollar_value=$(echo "scale=2; ${remaining_fmt} * 5 / 100" | bc -l 2>/dev/null | sed 's/^\./0./')
+  display_text="Free ${remaining_fmt}% (\$${dollar_value})"
 
   if [[ -n "$color" ]]; then
     echo "${display_text} | image=${AMP_ICON} color=${color}"
@@ -236,7 +239,7 @@ print_menu() {
 
   echo "---"
   echo "Amp Free Credit | size=14"
-  echo "Remaining: ${remaining_fmt}%"
+  echo "Remaining: ${remaining_fmt}% (\$${dollar_value})"
   if [[ -n "$individual_credits" && "$individual_credits" != "0" ]]; then
     echo "Individual Credits: \$${individual_credits}"
   fi
