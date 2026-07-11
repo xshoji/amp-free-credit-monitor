@@ -226,7 +226,7 @@ print_menu() {
   remaining_fmt="$remaining"
   color=$(color_for_remaining "$remaining")
 
-  # 100% = $5 換算で残量をドル表示
+  # Convert remaining percentage to dollar value (100% = $5)
   local dollar_value
   dollar_value=$(echo "scale=2; ${remaining_fmt} * 5 / 100" | bc -l 2>/dev/null | sed 's/^\./0./')
   display_text="Free ${remaining_fmt}% (\$${dollar_value})"
