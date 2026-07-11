@@ -21,16 +21,16 @@ It only depends on macOS, SwiftBar, and the Amp CLI binary installation.
 │  • Amp running  → fetch via `amp usage` │
 │  • Amp stopped  → show cached data      │
 │  • Wake / hourly → force refresh        │
-│  • Cache results as JSON                │
+│  • Cache results as JSON (%, credits)   │
 └─────────────────────────────────────────┘
 ```
 
 ### Menu Bar Preview
 
 ```
-[Logo] Free $5.44  ← Normal
-[Logo] Free $1.20  ← Low balance (orange)
-[Logo] Free $0.30  ← Critical (red)
+[Logo] Free 54%   ← Normal
+[Logo] Free 12%   ← Low balance (orange)
+[Logo] Free 3%    ← Critical (red)
 ```
 
 ## Prerequisites
@@ -78,7 +78,7 @@ open -a SwiftBar
 2. The script checks for the Amp process via `ps`.
 3. Runs `amp usage` to fetch current credit information.
 4. Saves the result as JSON to `/tmp/amp-credit-menubar.txt`.
-5. Displays the remaining balance in the menu bar.
+5. Displays the remaining Amp Free percentage and individual credits in the menu bar.
 
 ### When Amp is not running
 
@@ -91,9 +91,10 @@ The cache is stored at `/tmp/amp-credit-menubar.txt` in JSON format:
 
 ```json
 {
-  "remaining": 5.44,
+  "remaining": 54.4,
   "limit": 10,
   "replenishRate": 0.42,
+  "individualCredits": 2.50,
   "showLimit": false,
   "updatedAt": "2026-04-02T07:16:41Z"
 }
@@ -104,7 +105,7 @@ The cache is stored at `/tmp/amp-credit-menubar.txt` in JSON format:
 | Setting | How to change |
 |---|---|
 | Refresh interval | Rename the file (e.g., `1m` suffix for 1-minute interval) |
-| Color thresholds | Edit `CRITICAL_BALANCE_THRESHOLD` / `LOW_BALANCE_THRESHOLD` in the script (`≤ $0.50` → red, `≤ $1.50` → orange) |
+| Color thresholds | Edit `CRITICAL_BALANCE_THRESHOLD` / `LOW_BALANCE_THRESHOLD` in the script (`≤ 5%` → red, `≤ 15%` → orange) |
 | Cache file path | Set the `AMP_CREDIT_FILE` environment variable (default: `/tmp/amp-credit-menubar.txt`) |
 | Menu bar icon | Set `AMP_ICON_BASE64` to a base64-encoded PNG to override the bundled `amp` icon |
 
