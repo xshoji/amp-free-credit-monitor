@@ -24,12 +24,13 @@ fi
 
 AMP_LOOKUP_PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.local/bin:$PATH"
 MENUBAR_FILE="${AMP_CREDIT_FILE:-/tmp/amp-credit-menubar.txt}"
-CRITICAL_BALANCE_THRESHOLD="0.50"
-LOW_BALANCE_THRESHOLD="1.50"
+CRITICAL_BALANCE_THRESHOLD="5"
+LOW_BALANCE_THRESHOLD="15"
 
 remaining=""
 limit="0"
 rate="0"
+individual_credits="0"
 show_limit="false"
 amp_running="false"
 
@@ -51,9 +52,10 @@ resolve_amp_bin() {
 parse_usage_output() {
   local output="$1"
 
-  parsed_remaining=$(printf '%s\n' "$output" | sed -n 's/.*Amp Free: \$\([0-9.]*\).*/\1/p' | head -n 1)
-  parsed_limit=$(printf '%s\n' "$output" | sed -n 's#.*\/\$\([0-9.]*\) remaining.*#\1#p' | head -n 1)
-  parsed_rate=$(printf '%s\n' "$output" | sed -n 's/.*+\$\([0-9.]*\)\/hour.*/\1/p' | head -n 1)
+  parsed_remaining=$(printf '%s\n' "$output" | sed -n 's/.*Amp Free: \([0-9.]*\)%.*/\1/p' | head -n 1)
+  parsed_limit=""
+  parsed_rate=""
+  parsed_individual_credits=$(printf '%s\n' "$output" | sed -n 's/.*Individual credits: \$\([0-9.]*\) remaining.*/\1/p' | head -n 1)
 
   [[ -n "$parsed_remaining" ]]
 }
@@ -62,9 +64,10 @@ write_cache_file() {
   local cache_remaining="$1"
   local cache_limit="${2:-0}"
   local cache_rate="${3:-0}"
+  local cache_individual_credits="${4:-0}"
 
-  printf '{"remaining":%s,"limit":%s,"replenishRate":%s,"showLimit":false,"updatedAt":"%s"}\n' \
-    "$cache_remaining" "$cache_limit" "$cache_rate" "$(current_utc_timestamp)" > "$MENUBAR_FILE" || return 1
+  printf '{"remaining":%s,"limit":%s,"replenishRate":%s,"individualCredits":%s,"showLimit":false,"updatedAt":"%s"}\n' \
+    "$cache_remaining" "$cache_limit" "$cache_rate" "$cache_individual_credits" "$(current_utc_timestamp)" > "$MENUBAR_FILE" || return 1
 
   return 0
 }
@@ -108,9 +111,10 @@ update_from_amp() {
   remaining="$parsed_remaining"
   limit="${parsed_limit:-0}"
   rate="${parsed_rate:-0}"
+  individual_credits="${parsed_individual_credits:-0}"
   show_limit="false"
 
-  write_cache_file "$remaining" "$limit" "$rate" >/dev/null 2>&1 || true
+  write_cache_file "$remaining" "$limit" "$rate" "$individual_credits" >/dev/null 2>&1 || true
 
   return 0
 }
@@ -178,6 +182,7 @@ read_cache_file() {
   remaining=$(grep -o '"remaining":[0-9.]*' "$MENUBAR_FILE" | cut -d: -f2)
   limit=$(grep -o '"limit":[0-9.]*' "$MENUBAR_FILE" | cut -d: -f2)
   rate=$(grep -o '"replenishRate":[0-9.]*' "$MENUBAR_FILE" | cut -d: -f2)
+  individual_credits=$(grep -o '"individualCredits":[0-9.]*' "$MENUBAR_FILE" | cut -d: -f2)
   if grep -q '"showLimit":true' "$MENUBAR_FILE"; then
     show_limit="1"
   else
@@ -186,6 +191,7 @@ read_cache_file() {
 
   [[ -n "$limit" && "$limit" != "null" ]] || limit="0"
   [[ -n "$rate" && "$rate" != "null" ]] || rate="0"
+  [[ -n "$individual_credits" && "$individual_credits" != "null" ]] || individual_credits="0"
   [[ -n "$show_limit" && "$show_limit" != "null" ]] || show_limit="false"
 
   [[ -n "$remaining" && "$remaining" != "null" ]]
@@ -215,17 +221,12 @@ print_empty_state() {
 }
 
 print_menu() {
-  local remaining_fmt limit_fmt color display_text status_text
+  local remaining_fmt color display_text status_text
 
-  remaining_fmt=$(printf "%.2f" "$remaining")
-  limit_fmt=$(printf "%.2f" "$limit")
+  remaining_fmt="$remaining"
   color=$(color_for_remaining "$remaining")
 
-  if [[ "$show_limit" == "true" || "$show_limit" == "1" ]]; then
-    display_text="Free \$${remaining_fmt}/\$${limit_fmt}"
-  else
-    display_text="Free \$${remaining_fmt}"
-  fi
+  display_text="Free ${remaining_fmt}%"
 
   if [[ -n "$color" ]]; then
     echo "${display_text} | image=${AMP_ICON} color=${color}"
@@ -235,9 +236,9 @@ print_menu() {
 
   echo "---"
   echo "Amp Free Credit | size=14"
-  echo "Remaining: \$${remaining_fmt} / \$${limit_fmt}"
-  if [[ -n "$rate" && "$rate" != "0" ]]; then
-    echo "Replenish: +\$${rate}/hour"
+  echo "Remaining: ${remaining_fmt}%"
+  if [[ -n "$individual_credits" && "$individual_credits" != "0" ]]; then
+    echo "Individual Credits: \$${individual_credits}"
   fi
   echo "---"
 
