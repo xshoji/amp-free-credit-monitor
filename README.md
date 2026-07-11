@@ -91,12 +91,12 @@ The cache is stored at `/tmp/amp-credit-menubar.txt` in JSON format:
 
 ```json
 {
-  "remaining": 54.4,
-  "limit": 10,
-  "replenishRate": 0.42,
-  "individualCredits": 2.50,
+  "remaining": 95,
+  "limit": 0,
+  "replenishRate": 0,
+  "individualCredits": 81.13,
   "showLimit": false,
-  "updatedAt": "2026-04-02T07:16:41Z"
+  "updatedAt": "2026-07-11T17:32:59Z"
 }
 ```
 
