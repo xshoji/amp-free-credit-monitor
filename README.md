@@ -20,7 +20,7 @@ It only depends on macOS, SwiftBar, and the Amp CLI binary installation.
 │  • Auto-refresh every 10 seconds        │
 │  • Amp running  → fetch via `amp usage` │
 │  • Amp stopped  → show cached data      │
-│  • Wake / hourly → force refresh        │
+│  • Wake / daily reset (UTC 0:00) → force refresh │
 │  • Cache results as JSON (%, $, credits)│
 └─────────────────────────────────────────┘
 ```
@@ -33,7 +33,7 @@ It only depends on macOS, SwiftBar, and the Amp CLI binary installation.
 [Logo] Free 8% ($0.40)      ← Critical (red)
 ```
 
-> **Note:** 100% is treated as $5.00 for the dollar amount display.
+> **Note:** The dollar amount is an **estimated value**. 100% is treated as $5.00 for the display, which is an approximation and may differ from the actual billing amount.
 
 ## Prerequisites
 
@@ -85,7 +85,7 @@ open -a SwiftBar
 ### When Amp is not running
 
 - Displays the cached value from the last successful fetch (credit doesn't decrease while Amp is idle, so the cached value stays accurate).
-- On sleep/wake recovery (within 60 seconds) or at the 1st minute of each hour, the script force-runs `amp usage` to refresh.
+- On sleep/wake recovery (within 60 seconds) or after the UTC 00:00 daily reset, the script force-runs `amp usage` to refresh.
 
 ## Cache File Format
 
@@ -95,7 +95,6 @@ The cache is stored at `/tmp/amp-credit-menubar.txt` in JSON format:
 {
   "remaining": 95,
   "limit": 0,
-  "replenishRate": 0,
   "individualCredits": 81.13,
   "showLimit": false,
   "updatedAt": "2026-07-11T17:32:59Z"
@@ -108,7 +107,7 @@ The cache is stored at `/tmp/amp-credit-menubar.txt` in JSON format:
 |---|---|
 | Refresh interval | Rename the file (e.g., `1m` suffix for 1-minute interval) |
 | Color thresholds | Edit `CRITICAL_BALANCE_THRESHOLD` / `LOW_BALANCE_THRESHOLD` in the script (`≤ 10%` → red, `≤ 30%` → orange) |
-| Dollar conversion | 100% is treated as $5.00; edit the formula in `print_menu()` to change |
+| Dollar conversion | 100% is treated as $5.00 (estimated value); edit the formula in `print_menu()` to change |
 | Cache file path | Set the `AMP_CREDIT_FILE` environment variable (default: `/tmp/amp-credit-menubar.txt`) |
 | Menu bar icon | Set `AMP_ICON_BASE64` to a base64-encoded PNG to override the bundled `amp` icon |
 
@@ -129,6 +128,7 @@ The cache is stored at `/tmp/amp-credit-menubar.txt` in JSON format:
 ### Known Limitations
 
 - The script parses `amp usage` output with regex. If the output format changes in a future Amp update, parsing may break.
+- The dollar amount is an estimated value based on the assumption that 100% = $5.00, and may differ from the actual billing amount.
 
 ## License
 

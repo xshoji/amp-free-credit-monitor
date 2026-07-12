@@ -29,7 +29,6 @@ LOW_BALANCE_THRESHOLD="30"
 
 remaining=""
 limit="0"
-rate="0"
 individual_credits="0"
 show_limit="false"
 amp_running="false"
@@ -53,8 +52,6 @@ parse_usage_output() {
   local output="$1"
 
   parsed_remaining=$(printf '%s\n' "$output" | sed -n 's/.*Amp Free: \([0-9.]*\)%.*/\1/p' | head -n 1)
-  parsed_limit=""
-  parsed_rate=""
   parsed_individual_credits=$(printf '%s\n' "$output" | sed -n 's/.*Individual credits: \$\([0-9.]*\) remaining.*/\1/p' | head -n 1)
 
   [[ -n "$parsed_remaining" ]]
@@ -63,11 +60,10 @@ parse_usage_output() {
 write_cache_file() {
   local cache_remaining="$1"
   local cache_limit="${2:-0}"
-  local cache_rate="${3:-0}"
-  local cache_individual_credits="${4:-0}"
+  local cache_individual_credits="${3:-0}"
 
-  printf '{"remaining":%s,"limit":%s,"replenishRate":%s,"individualCredits":%s,"showLimit":false,"updatedAt":"%s"}\n' \
-    "$cache_remaining" "$cache_limit" "$cache_rate" "$cache_individual_credits" "$(current_utc_timestamp)" > "$MENUBAR_FILE" || return 1
+  printf '{"remaining":%s,"limit":%s,"individualCredits":%s,"showLimit":false,"updatedAt":"%s"}\n' \
+    "$cache_remaining" "$cache_limit" "$cache_individual_credits" "$(current_utc_timestamp)" > "$MENUBAR_FILE" || return 1
 
   return 0
 }
@@ -110,11 +106,10 @@ update_from_amp() {
 
   remaining="$parsed_remaining"
   limit="${parsed_limit:-0}"
-  rate="${parsed_rate:-0}"
   individual_credits="${parsed_individual_credits:-0}"
   show_limit="false"
 
-  write_cache_file "$remaining" "$limit" "$rate" "$individual_credits" >/dev/null 2>&1 || true
+  write_cache_file "$remaining" "$limit" "$individual_credits" >/dev/null 2>&1 || true
 
   return 0
 }
@@ -133,33 +128,27 @@ just_woke_up() {
   (( now_epoch - last_wake_epoch <= 60 ))
 }
 
-# --- Force refresh if cache is older than the latest scheduled :01 refresh ---
-# Detects missed hourly refreshes, including sleep/wake recovery gaps
-cache_missed_latest_hourly_refresh() {
-  local updated_at updated_epoch current_minute threshold_hour threshold_epoch
+# --- Force refresh if cache predates the latest UTC midnight daily reset ---
+# Amp Free credits reset daily at UTC 00:00; if the cache is from before that, refresh
+cache_missed_latest_daily_refresh() {
+  local updated_at updated_epoch today_utc_midnight_epoch
 
   updated_at=$(read_cache_updated_at)
   if [[ -z "$updated_at" || "$updated_at" == "null" ]]; then
     return 1
   fi
 
-  # Parse cached UTC timestamp consistently before comparing against local schedule time.
+  # Parse cached UTC timestamp
   updated_epoch=$(date -j -u -f "%Y-%m-%dT%H:%M:%SZ" "$updated_at" +%s 2>/dev/null)
   if [[ -z "$updated_epoch" ]]; then
     return 1
   fi
 
-  current_minute=$(date +%M)
-  if (( 10#$current_minute >= 1 )); then
-    threshold_hour=$(date +"%Y-%m-%dT%H")
-  else
-    threshold_hour=$(date -v-1H +"%Y-%m-%dT%H")
-  fi
+  # Most recent UTC midnight (00:00:00 UTC today)
+  today_utc_midnight_epoch=$(date -u +%s)
+  today_utc_midnight_epoch=$(( today_utc_midnight_epoch - (today_utc_midnight_epoch % 86400) ))
 
-  threshold_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${threshold_hour}:01:00" +%s 2>/dev/null)
-
-  [[ -n "$threshold_epoch" ]] || return 1
-  (( updated_epoch < threshold_epoch ))
+  (( updated_epoch < today_utc_midnight_epoch ))
 }
 
 refresh_cached_data_if_needed() {
@@ -168,7 +157,7 @@ refresh_cached_data_if_needed() {
     return
   fi
 
-  if just_woke_up || cache_missed_latest_hourly_refresh; then
+  if just_woke_up || cache_missed_latest_daily_refresh; then
     update_from_amp
   fi
 }
@@ -181,7 +170,6 @@ read_cache_file() {
 
   remaining=$(grep -o '"remaining":[0-9.]*' "$MENUBAR_FILE" | cut -d: -f2)
   limit=$(grep -o '"limit":[0-9.]*' "$MENUBAR_FILE" | cut -d: -f2)
-  rate=$(grep -o '"replenishRate":[0-9.]*' "$MENUBAR_FILE" | cut -d: -f2)
   individual_credits=$(grep -o '"individualCredits":[0-9.]*' "$MENUBAR_FILE" | cut -d: -f2)
   if grep -q '"showLimit":true' "$MENUBAR_FILE"; then
     show_limit="1"
@@ -190,7 +178,6 @@ read_cache_file() {
   fi
 
   [[ -n "$limit" && "$limit" != "null" ]] || limit="0"
-  [[ -n "$rate" && "$rate" != "null" ]] || rate="0"
   [[ -n "$individual_credits" && "$individual_credits" != "null" ]] || individual_credits="0"
   [[ -n "$show_limit" && "$show_limit" != "null" ]] || show_limit="false"
 
@@ -270,7 +257,7 @@ load_credit_data() {
 # --- Main ---
 # 1. If the Amp process is running, run `amp usage` and update the cache
 # 2. If not running, show cached data (balance doesn't decrease while idle)
-# 3. Force refresh on sleep/wake recovery (within 60s) or if cache missed the latest hourly :01 refresh
+# 3. Force refresh on sleep/wake recovery (within 60s) or if cache predates the latest UTC midnight daily reset
 # 4. If no cache file exists, display "--"
 main() {
   load_credit_data
