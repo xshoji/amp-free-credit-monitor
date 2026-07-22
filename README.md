@@ -13,16 +13,16 @@ This is a standalone SwiftBar plugin — no additional Amp plugins required.
 It only depends on macOS, SwiftBar, and the Amp CLI binary installation.
 
 ```
-┌─────────────────────────────────────────┐
-│  SwiftBar Plugin (bash)                 │
-│  amp-free-credit-monitor.10s.sh         │
-│                                         │
-│  • Auto-refresh every 10 seconds        │
-│  • Amp running  → fetch via `amp usage` │
-│  • Amp stopped  → show cached data      │
+┌──────────────────────────────────────────────────┐
+│  SwiftBar Plugin (bash)                          │
+│  amp-free-credit-monitor.10s.sh                  │
+│                                                  │
+│  • Auto-refresh every 10 seconds                 │
+│  • Amp running  → fetch via `amp usage`          │
+│  • Amp stopped  → show cached data               │
 │  • Wake / daily reset (UTC 0:00) → force refresh │
-│  • Cache results as JSON (%, $, credits)│
-└─────────────────────────────────────────┘
+│  • Cache results as JSON (%, $, credits)         │
+└──────────────────────────────────────────────────┘
 ```
 
 ### Menu Bar Preview
