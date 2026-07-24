@@ -114,6 +114,42 @@ update_from_amp() {
   return 0
 }
 
+# --- Detect SwiftBar restart ---
+# If SwiftBar was started after the cache file was last written, treat it as a fresh restart
+# and force a refresh so the menu bar shows live data instead of a stale cache.
+swiftbar_just_restarted() {
+  local swiftbar_pid swiftbar_start_str swiftbar_start_epoch updated_at updated_epoch
+
+  # Use `ps` instead of `pgrep` — pgrep may not be available in SwiftBar's plugin environment.
+  # comm shows the full path (e.g. /Applications/SwiftBar.app/Contents/MacOS/SwiftBar).
+  swiftbar_pid=$(ps -eo pid=,comm= 2>/dev/null | grep "/SwiftBar$" | head -n 1 | awk '{print $1}')
+  if [[ -z "$swiftbar_pid" ]]; then
+    return 1
+  fi
+
+  swiftbar_start_str=$(ps -p "$swiftbar_pid" -o lstart= 2>/dev/null | xargs)
+  if [[ -z "$swiftbar_start_str" ]]; then
+    return 1
+  fi
+
+  swiftbar_start_epoch=$(date -j -f "%a %b %d %H:%M:%S %Y" "$swiftbar_start_str" +%s 2>/dev/null)
+  if [[ -z "$swiftbar_start_epoch" ]]; then
+    return 1
+  fi
+
+  updated_at=$(read_cache_updated_at)
+  if [[ -z "$updated_at" || "$updated_at" == "null" ]]; then
+    return 1
+  fi
+
+  updated_epoch=$(date -j -u -f "%Y-%m-%dT%H:%M:%SZ" "$updated_at" +%s 2>/dev/null)
+  if [[ -z "$updated_epoch" ]]; then
+    return 1
+  fi
+
+  (( swiftbar_start_epoch > updated_epoch ))
+}
+
 # --- Detect sleep/wake recovery ---
 # Get the last wake time via `sysctl kern.waketime`; if within 60 seconds, treat as just woken up
 just_woke_up() {
@@ -157,7 +193,7 @@ refresh_cached_data_if_needed() {
     return
   fi
 
-  if just_woke_up || cache_missed_latest_daily_refresh; then
+  if swiftbar_just_restarted || just_woke_up || cache_missed_latest_daily_refresh; then
     update_from_amp
   fi
 }
@@ -257,7 +293,7 @@ load_credit_data() {
 # --- Main ---
 # 1. If the Amp process is running, run `amp usage` and update the cache
 # 2. If not running, show cached data (balance doesn't decrease while idle)
-# 3. Force refresh on sleep/wake recovery (within 60s) or if cache predates the latest UTC midnight daily reset
+# 3. Force refresh on SwiftBar restart, sleep/wake recovery (within 60s), or if cache predates the latest UTC midnight daily reset
 # 4. If no cache file exists, display "--"
 main() {
   load_credit_data
